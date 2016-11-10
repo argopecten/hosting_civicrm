@@ -20,7 +20,102 @@ function provision_civicrm_tests_drush_command() {
     ),
   );
 
+  $items['provision-civicrm-tests-run-pending'] = array(
+    'description' => dt('Runs provision_civicrm pending tasks'),
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
+    // Although we're a provision command, we require hostmaster to be around to
+    // run the tests correctly
+    'drupal dependencies' => array(
+      'hosting',
+    ),
+  );
+
+  $items['provision-civicrm-tests-install-platform'] = array(
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
+    'arguments' => array(
+      'platform_name' => 'Platform name',
+      'platform_alias' => 'Platform alias',
+    ),
+    // Although we're a provision command, we require hostmaster to be around to
+    // run the tests correctly
+    'drupal dependencies' => array(
+      'hosting',
+    ),
+  );
+
+  $items['provision-civicrm-tests-install-site'] = array(
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
+    'arguments' => array(
+      'platform_name' => 'Platform name',
+      'site' => 'Site URI',
+      'profile' => 'Profile name',
+    ),
+    // Although we're a provision command, we require hostmaster to be around to
+    // run the tests correctly
+    'drupal dependencies' => array(
+      'hosting',
+    ),
+  );
+
+  $items['provision-civicrm-tests-delete-site'] = array(
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
+    'arguments' => array(
+      'site' => 'Site URI',
+    ),
+    'drupal dependencies' => array(
+      'hosting',
+    ),
+  );
+
+  $items['provision-civicrm-tests-migrate-site'] = array(
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_FULL,
+    'arguments' => array(
+      'site' => 'Site URI',
+      'target' => 'Target platform name',
+    ),
+    // Although we're a provision command, we require hostmaster to be around to
+    // run the tests correctly
+    'drupal dependencies' => array(
+      'hosting',
+    ),
+  );
+
   return $items;
+}
+
+/**
+ * Drush command to run pending tasks.
+ */
+function drush_provision_civicrm_tests_run_pending() {
+  drush_provision_civicrm_tests_run_remaining_tasks();
+}
+
+/**
+ * Drush command to install a CiviCRM platform.
+ */
+function drush_provision_civicrm_tests_install_platform($platform_name, $site, $profile_name = 'standard') {
+  provision_civicrm_tests_install_platform($platform_name, $site, $profile_name);
+}
+
+/**
+ * Drush command to install a CiviCRM site.
+ */
+function drush_provision_civicrm_tests_install_site($platform_name, $site, $profile_name = 'standard') {
+  provision_civicrm_tests_install_site($platform_name, $site, $profile_name);
+}
+
+/**
+ * Drush command to delete a CiviCRM site.
+ */
+function drush_provision_civicrm_tests_delete_site($site) {
+  provision_civicrm_tests_remove_site($site);
+}
+
+/**
+ * Drush command to migrate a CiviCRM site.
+ */
+function drush_provision_civicrm_tests_migrate_site($site, $target) {
+  provision_civicrm_tests_migrate_site($site, $target);
 }
 
 /**
@@ -97,8 +192,8 @@ function provision_civicrm_tests_001_install_and_delete() {
   provision_civicrm_tests_install_site('civicrm46d7', 'civicrm46d7-standard');
   provision_civicrm_tests_remove_site('civicrm46d7-standard');
 
-  provision_civicrm_tests_install_site('civicrm46d6', 'civicrm46d6-standard');
-  provision_civicrm_tests_remove_site('civicrm46d6-standard');
+  provision_civicrm_tests_install_site('civicrm46d6', 'civicrm46d6', 'default');
+  provision_civicrm_tests_remove_site('civicrm46d6-default');
 }
 
 function provision_civicrm_tests_002_basic_migrations() {
@@ -263,16 +358,7 @@ function provision_civicrm_tests_remove_site($site) {
  *   The target platform to migrate to.
  */
 function provision_civicrm_tests_migrate_site($site, $target) {
-  drush_log(dt('Migrating: @site to platform: @platform.', array('@site' => "$site.aegir.example.com", '@platform' => $target)), 'ok');
-  // Do the migrate.
-  provision_backend_invoke("@$site.aegir.example.com", 'provision-migrate', array("@platform_$target", array("debug" => TRUE)));
-  // Import the site into the frontend.
-  provision_backend_invoke('@hostmaster', 'hosting-import', array("@$site.aegir.example.com"));
-  // Verify the $target platform.
-  provision_backend_invoke('@hostmaster', 'hosting-task', array("@platform_$target", 'verify'), array('force' => TRUE));
-  // Import and verify the site.
-  provision_backend_invoke('@hostmaster', 'hosting-import', array("@$site.aegir.example.com"));
-  provision_backend_invoke('@hostmaster', 'hosting-task', array("@$site.aegir.example.com", 'verify'), array('force' => TRUE));
+  drush_provision_tests_migrate_site($site, $target);
   drush_provision_civicrm_tests_run_remaining_tasks();
 }
 
@@ -280,13 +366,5 @@ function provision_civicrm_tests_migrate_site($site, $target) {
  * Run all remaining hosting tasks.
  */
 function drush_provision_civicrm_tests_run_remaining_tasks() {
-  $tasks = array();
-  $result = db_query("SELECT t.nid FROM {hosting_task} t INNER JOIN {node} n ON t.vid = n.vid WHERE t.task_status = 0 ORDER BY n.changed, n.nid ASC");
-  foreach ($result as $node) {
-    $tasks[$node->nid] = node_load($node->nid);
-  }
-
-  foreach ($tasks as $task) {
-    provision_backend_invoke('@hostmaster', "hosting-task", array($task->nid), array('force' => TRUE));
-  }
+  drush_provision_tests_run_remaining_tasks(TRUE);
 }
