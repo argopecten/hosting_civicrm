@@ -155,52 +155,10 @@ function _provision_civicrm_create_civicron_user() {
 
 
 /**
- * Fix permissions on all CiviCRM writable directories
+ * Clear Config.IDS.ini files from various possible locations.
  */
-function _provision_civicrm_fixpermissions() {
-  drush_log(dt("CiviCRM: in _provision_civicrm_fixpermissions()"));
-
-  // Make sure the template_c and uploads have the correct permissions
-  $civipaths = array(
-    '/files/civicrm/templates_c',
-    '/files/civicrm/upload',
-    '/files/civicrm/persist',
-    '/files/civicrm/custom',
-    '/files/civicrm/ConfigAndLog',
-  );
-
-  // New in CiviCRM 4.5 (avoid warnings for CiviCRM < 4.5)
-  if (file_exists(d()->site_path . '/files/civicrm/dynamic')) {
-    $civipaths[] = '/files/civicrm/dynamic';
-  }
-
-  foreach ($civipaths as $p) {
-    $fullpath = d()->site_path . $p;
-
-    // we setgid directories, avoids a few permissions issues
-    // where files are aegir.www-data.
-    provision_file()->chmod($fullpath, 02770, TRUE)
-      ->succeed('Changed permissions of @path to @perm')
-      ->fail('Could not change permissions <code>@path to @perm')
-      ->status();
-
-    provision_file()->chgrp($fullpath, d('@server_master')->web_group, TRUE)
-      ->succeed('Changed group ownership @path to @gid')
-      ->fail('Could not change group ownership of @path to @gid')
-      ->status();
-  }
-
-  // Fix permissions on civicrm.settings.php
-  provision_file()->chmod(d()->site_path . '/civicrm.settings.php', 0640)
-    ->succeed('Changed permissions of @path to @perm')
-    ->fail('Could not change permissions <code>@path to @perm')
-    ->status();
-
-  provision_file()->chgrp(d()->site_path . '/civicrm.settings.php', d('@server_master')->web_group, TRUE)
-    ->succeed('Changed group ownership @path to @gid')
-    ->fail('Could not change group ownership of @path to @gid')
-    ->status();
-
+function _provision_civicrm_clear_config_cache() {
+  drush_log(dt("CiviCRM: Clearing config cache."));
   // Remove the Config.IDS.ini file (d.o#1226668)
   // Usually 'verify' will call civicrm_cache_clear() which will
   // delete most of the contents of template_c, but there have been
@@ -208,11 +166,6 @@ function _provision_civicrm_fixpermissions() {
   //
   // Also, civicrm_cache_clear() assumes that _civi_init() has been
   // done, and if we init, then the Config.IDS.ini will be parsed.
-/* [ML] do not rely on _civi_init() to have been run yet.
-  require_once 'CRM/Core/Config.php';
-  $config = CRM_Core_Config::singleton( );
-  $configFile = $config->configAndLogDir . 'Config.IDS.ini';
-*/
 
   $configFiles = array(
     '/files/civicrm/ConfigAndLog/Config.IDS.ini',
@@ -225,13 +178,12 @@ function _provision_civicrm_fixpermissions() {
 
     if (provision_file()->exists($ids)->status()) {
       provision_file()->unlink($ids)
-        ->succeed('CiviCRM: Removing @path')
+        ->succeed('CiviCRM: Removed @path')
         ->fail('CiviCRM: Could not remove @path')
         ->status();
     }
   }
 
-  drush_log(dt("CiviCRM: finished _provision_civicrm_fixpermissions()"));
 }
 
 /**
@@ -340,7 +292,12 @@ function _provision_civicrm_is_site_context($load_if_missing = FALSE) {
 function _provision_civicrm_get_package_path($load_if_missing = FALSE) {
   $module = _provision_civicrm_get_package_info();
 
-  if ($module && $module != NULL) {
+  if ($module) {
+    // Issue#2942572 For D8, for now, we only support having CiviCRM in /vendor
+    if (substr($module['version'], 0, 2) == '8.') {
+      return 'vendor/civicrm/civicrm-core/';
+    }
+
     // Get the parent directory of the module, which is in civicrm/drupal/civicrm.module
     $crmpath = dirname(dirname($module['filename']));
     drush_log(dt('CiviCRM: civicrm is in @path', array('@path' => $crmpath)));
@@ -348,10 +305,8 @@ function _provision_civicrm_get_package_path($load_if_missing = FALSE) {
     // do#2364871 Workaround a BOA 2.3 issue
     // When civicrm is in an install profile, the civicrm drush module does not get loaded.
     if ($load_if_missing && ! function_exists('_civicrm_get_crmpath')) {
-      if (provision_file()->exists($crmpath . '/drupal/drush/civicrm.drush.inc')->status()) {
-        drush_log(dt('CiviCRM: loading file: civicrm.drush.inc.'));
-        require_once($crmpath . '/drupal/drush/civicrm.drush.inc');
-      }
+      drush_log(dt('CiviCRM: loading file: civicrm.drush.inc.'));
+      require_once($crmpath . '/drupal/drush/civicrm.drush.inc');
     }
 
     return $crmpath;
@@ -373,16 +328,8 @@ function _provision_civicrm_get_package_info() {
   $profile = drush_get_option('profile', NULL);
 
   if (isset($packages['modules']) && isset($packages['modules']['civicrm'])) {
-    $test_module = $packages['modules']['civicrm'];
-    $test_crmpath = dirname(dirname($test_module['filename']));
-    if (preg_match("/\/(static|distro)$/", $test_crmpath)) {
-      drush_log(dt('CiviCRM: reported in packages with invalid path @path - ignored', array('@path' => $test_crmpath)));
-      $module = NULL;
-    }
-    else {
-      drush_log(dt('CiviCRM: found civicrm in packages'));
-      $module = $packages['modules']['civicrm'];
-    }
+    drush_log(dt('CiviCRM: found civicrm in packages'));
+    $module = $packages['modules']['civicrm'];
   }
   elseif (isset($packages['sites-all']) && isset($packages['sites-all']['modules']) && isset($packages['sites-all']['modules']['civicrm'])) {
     $module = $packages['sites-all']['modules']['civicrm'];
@@ -397,7 +344,6 @@ function _provision_civicrm_get_package_info() {
     drush_log(dt('CiviCRM: found civicrm in packages of @profile profile modules', array('@profile' => $profile)));
   }
   else {
-    $module = NULL;
     // drush_log(dt('CiviCRM: civicrm not found in packages ' . print_r($packages, 1)));
   }
 
@@ -641,8 +587,8 @@ function provision_civicrm_verify_common() {
   // Update Resource URLs
   _provision_civicrm_fixresourceurls();
 
-  // Make sure the template_c and uploads have the correct permissions
-  _provision_civicrm_fixpermissions();
+  // Clear Config.IDS.ini
+  _provision_civicrm_clear_config_cache();
 
   drush_log(dt("CiviCRM: leaving provision_civicrm_verify_common()."));
   return TRUE;
@@ -770,6 +716,7 @@ function _provision_civicrm_database_version() {
       break;
 
     case 7:
+    case 8:
       $dbVer = db_query('select version from {civicrm_domain} where id = :id', array(':id' => CIVICRM_DOMAIN_ID))->fetchField();
       break;
   }
