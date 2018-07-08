@@ -25,7 +25,7 @@ function hosting_civicrm_cron_hosting_queues() {
     'name' => t('CiviCRM cron queue'),
     'description' => t('Run cron on hosted CiviCRM sites.') . '<br />' . t('You can set a default interval on the !settings', array('!settings' => l('settings page', 'admin/hosting/settings'))),
     'type' => variable_get('hosting_civicrm_cron_queue_type', 'serial'),
-    'frequency' => strtotime("1 hour", 0),
+    'frequency' => variable_get('hosting_civicrm_cron_queue_frequency', strtotime("1 minute", 0)),
     'items' => 5,
     'total_items' => hosting_civicrm_site_count(),
     'min_threads' => 6,
