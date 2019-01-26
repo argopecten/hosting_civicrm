@@ -423,7 +423,7 @@ function _provision_civicrm_regenerate_settings() {
   $civicrmInstallerHelper = $crmPath . "/install/civicrm.php";
 
   if (! file_exists($civicrmInstallerHelper) ) {
-    drush_log(dt("CiviCRM installer helper file is missing. Not running provision_civicrm_regenerate_settings()."));
+    drush_log(dt("CiviCRM installer helper file is missing. Not running provision_civicrm_regenerate_settings()."), 'error');
     return;
   }
 
@@ -723,12 +723,12 @@ function _provision_civicrm_database_version() {
 
   switch (drush_drupal_major_version()) {
     case 6:
-      $dbVer = db_result(db_query('select version from {civicrm_domain} where id = %d', CIVICRM_DOMAIN_ID));
+      $dbVer = db_result(db_query('select version from civicrm_domain where id = %d', CIVICRM_DOMAIN_ID));
       break;
 
     case 7:
     case 8:
-      $dbVer = db_query('select version from {civicrm_domain} where id = :id', array(':id' => CIVICRM_DOMAIN_ID))->fetchField();
+      $dbVer = db_query('select version from civicrm_domain where id = :id', array(':id' => CIVICRM_DOMAIN_ID))->fetchField();
       break;
   }
 
