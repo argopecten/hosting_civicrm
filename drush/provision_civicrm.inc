@@ -735,6 +735,7 @@ function _provision_civicrm_codebase_version() {
     }
     $parts = explode('-', $full_version);
     $civicrm_version = $parts[1];
+    drush_log(dt("CiviCRM civicrm_version @civiVer", array('@civiVer' => $civicrm_version)), 'ok');
   }
 
   return $civicrm_version;
