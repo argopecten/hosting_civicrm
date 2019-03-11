@@ -625,6 +625,11 @@ function _provision_civicrm_upgradedb() {
   $codeVer = _provision_civicrm_codebase_version();
   $dbVer   = _provision_civicrm_database_version();
 
+  if (!$codeVer || !$dbVer) {
+    drush_log(dt("CiviCRM version problem (codeVer @codeVer while dbVer @dbVer)", array('@codeVer' => $codeVer, '@dbVer' => $dbVer)), 'ok');
+    return;
+  }
+
   if (version_compare($codeVer, $dbVer) == 0) {
     drush_log(dt("CiviCRM: no upgrade required (@codeVer = @dbVer)", array('@codeVer' => $codeVer, '@dbVer' => $dbVer)), 'ok');
     return;
@@ -671,9 +676,14 @@ function _provision_civicrm_upgradedb() {
  * Check whether to set the upgrade mode
  */
 function _provision_civicrm_check_upgrade_mode() {
-  // Sets the civicrm upgrade mode of the code/db version do not match
+  // Sets the civicrm upgrade mode if the code/db version do not match
   $codeVer = _provision_civicrm_codebase_version();
   $dbVer = _provision_civicrm_database_version();
+
+  if (!$codeVer || !$dbVer) {
+    drush_log(dt("CiviCRM version problem (codeVer @codeVer and dbVer @dbVer)", array('@codeVer' => $codeVer, '@dbVer' => $dbVer)), 'ok');
+    return FALSE;
+  }
 
   if (version_compare($codeVer, $dbVer) != 0) {
     if (! defined('CIVICRM_UPGRADE_ACTIVE')) {
@@ -705,7 +715,24 @@ function _provision_civicrm_codebase_version() {
   $packages = drush_get_option('packages');
 
   if (array_key_exists('civicrm', $packages['modules'])) {
-    $full_version = $packages['modules']['civicrm']['version'];
+    if (drush_drupal_major_version() <= 7) {
+      $full_version = $packages['modules']['civicrm']['info']['version'];
+      if ($full_version) {
+        drush_log(dt("CiviCRM 7 full_version @fullVer", array('@fullVer' => $full_version)), 'ok');
+      }
+      else {
+        drush_log(dt("CiviCRM 7 full_version problem", array('@fullVer' => $full_version)), 'warning');
+      }
+    }
+    else {
+      $full_version = $packages['modules']['civicrm']['version'];
+      if ($full_version) {
+        drush_log(dt("CiviCRM 8 full_version @fullVer", array('@fullVer' => $full_version)), 'ok');
+      }
+      else {
+        drush_log(dt("CiviCRM 8 full_version problem", array('@fullVer' => $full_version)), 'warning');
+      }
+    }
     $parts = explode('-', $full_version);
     $civicrm_version = $parts[1];
   }
