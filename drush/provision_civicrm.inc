@@ -706,11 +706,7 @@ function _provision_civicrm_check_upgrade_mode() {
  *   but Drupal8 only has $packages['modules']['civicrm']['version'] (which D7 also has).
  */
 function _provision_civicrm_codebase_version() {
-  static $civicrm_version = 0;
-
-  if ($civicrm_version) {
-    return $civicrm_version;
-  }
+  $civicrm_version = FALSE;
 
   $packages = drush_get_option('packages');
 
