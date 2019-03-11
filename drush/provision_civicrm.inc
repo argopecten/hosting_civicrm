@@ -532,9 +532,9 @@ function provision_civicrm_civicrm_settings_template_alter(&$template) {
   );
 
   foreach ($replacements as $desc => $line) {
-    // Throw a warning if any of our replacements cannot be found.
+    // Throw a message if any of our replacements cannot be found.
     if (!preg_match($line['search_regex'], $template)) {
-      drush_log(dt('CiviCRM: Failed to ' . $desc), 'warning');
+      drush_log(dt('CiviCRM: Failed to ' . $desc), 'info');
     }
     else {
       $count = 0;
