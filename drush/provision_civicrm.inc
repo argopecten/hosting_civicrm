@@ -295,9 +295,28 @@ function _provision_civicrm_get_package_path($load_if_missing = FALSE) {
   if ($module && $module != NULL) {
     // Issue#2942572 For D8, for now, we only support having CiviCRM in /vendor
     if (substr($module['version'], 0, 2) == '8.') {
-      $crmpath = d()->root . '/vendor/civicrm/civicrm-core/';
-      drush_log(dt('CiviCRM: civicrm is in @path', array('@path' => $crmpath)));
-      return $crmpath;
+      // Detect D8 split codebase structure
+      $absolute_root = d()->root;
+      $drupal8_vendor_local = d()->root . '/vendor';
+      $drupal8_vendor_above = d()->root . '/../vendor';
+      if (provision_file()->exists($drupal8_vendor_local)->status()) {
+        $absolute_root = dirname($drupal8_vendor_local);
+        drush_log(dt('CiviCRM: D8 vendor path: @vendor', array('@vendor' => $drupal8_vendor_local)), 'message');
+      }
+      elseif (provision_file()->exists($drupal8_vendor_above)->status()) {
+        $absolute_root = dirname($drupal8_vendor_above);
+        drush_log(dt('CiviCRM: D8 vendor path: @vendor', array('@vendor' => $drupal8_vendor_above)), 'message');
+      }
+      drush_log(dt('CiviCRM: D8 absolute_root: @path', array('@path' => $absolute_root)));
+      $crmpath = $absolute_root . '/vendor/civicrm/civicrm-core/';
+      if (provision_file()->exists($crmpath)->status()) {
+        drush_log(dt('CiviCRM: civicrm is in @path', array('@path' => $crmpath)));
+        return $crmpath;
+      }
+      else {
+        drush_log(dt('CiviCRM: ERROR NO civicrm found in @path', array('@path' => $crmpath)));
+        return $crmpath;
+      }
     }
 
     // Get the parent directory of the module, which is in civicrm/drupal/civicrm.module
