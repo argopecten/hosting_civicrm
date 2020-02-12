@@ -300,11 +300,11 @@ function _provision_civicrm_get_package_path($load_if_missing = FALSE) {
       $drupal8_vendor_local = d()->root . '/vendor';
       $drupal8_vendor_above = d()->root . '/../vendor';
       if (provision_file()->exists($drupal8_vendor_local)->status()) {
-        $absolute_root = dirname($drupal8_vendor_local);
+        $absolute_root = realpath(dirname($drupal8_vendor_local));
         drush_log(dt('CiviCRM: D8 vendor path: @vendor', array('@vendor' => $drupal8_vendor_local)), 'message');
       }
       elseif (provision_file()->exists($drupal8_vendor_above)->status()) {
-        $absolute_root = dirname($drupal8_vendor_above);
+        $absolute_root = realpath(dirname($drupal8_vendor_above));
         drush_log(dt('CiviCRM: D8 vendor path: @vendor', array('@vendor' => $drupal8_vendor_above)), 'message');
       }
       drush_log(dt('CiviCRM: D8 absolute_root: @path', array('@path' => $absolute_root)));
