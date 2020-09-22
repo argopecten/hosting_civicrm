@@ -28,6 +28,24 @@ function provision_civicrm_civicrm_init() {
 }
 
 /**
+ * Wrapper to initialize CiviCRM, depending on the CMS.
+ *
+ * Returns FALSE if this is not a CiviCRM site (ex: hostmaster).
+ */
+function provision_civicrm_initialize() {
+  if (drush_drupal_major_version() >= 8 && \Drupal::hasService('civicrm')) {
+    \Drupal::service('civicrm')->initialize();
+    return TRUE;
+  }
+  elseif (function_exists('civicrm_initialize')) {
+    civicrm_initialize();
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
+/**
  * Setup logs and template_c in a sub-directory to avoid permission
  * conflicts between the www-user and the aegir user.
  */
@@ -655,11 +673,6 @@ function _provision_civicrm_upgradedb() {
   $codeVer = _provision_civicrm_codebase_version();
   $dbVer   = _provision_civicrm_database_version();
 
-  if (!$codeVer || !$dbVer) {
-    drush_log(dt("CiviCRM version problem (codeVer @codeVer while dbVer @dbVer)", array('@codeVer' => $codeVer, '@dbVer' => $dbVer)), 'ok');
-    return;
-  }
-
   if (version_compare($codeVer, $dbVer) == 0) {
     drush_log(dt("CiviCRM: no upgrade required (@codeVer = @dbVer)", array('@codeVer' => $codeVer, '@dbVer' => $dbVer)), 'ok');
     return;
@@ -706,14 +719,9 @@ function _provision_civicrm_upgradedb() {
  * Check whether to set the upgrade mode
  */
 function _provision_civicrm_check_upgrade_mode() {
-  // Sets the civicrm upgrade mode if the code/db version do not match
+  // Sets the civicrm upgrade mode of the code/db version do not match
   $codeVer = _provision_civicrm_codebase_version();
   $dbVer = _provision_civicrm_database_version();
-
-  if (!$codeVer || !$dbVer) {
-    drush_log(dt("CiviCRM version problem (codeVer @codeVer and dbVer @dbVer)", array('@codeVer' => $codeVer, '@dbVer' => $dbVer)), 'ok');
-    return FALSE;
-  }
 
   if (version_compare($codeVer, $dbVer) != 0) {
     if (! defined('CIVICRM_UPGRADE_ACTIVE')) {
@@ -736,7 +744,11 @@ function _provision_civicrm_check_upgrade_mode() {
  *   but Drupal8 only has $packages['modules']['civicrm']['version'] (which D7 also has).
  */
 function _provision_civicrm_codebase_version() {
-  $civicrm_version = FALSE;
+  static $civicrm_version = 0;
+
+  if ($civicrm_version) {
+    return $civicrm_version;
+  }
 
   $packages = drush_get_option('packages');
 
