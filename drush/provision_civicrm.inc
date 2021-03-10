@@ -310,31 +310,17 @@ function _provision_civicrm_is_site_context($load_if_missing = FALSE) {
 function _provision_civicrm_get_package_path($load_if_missing = FALSE) {
   $module = _provision_civicrm_get_package_info();
 
-  if ($module && $module != NULL) {
-    // Issue#2942572 For D8, for now, we only support having CiviCRM in /vendor
-    if (substr($module['version'], 0, 2) == '8.') {
-      // Detect D8 split codebase structure
-      $absolute_root = d()->root;
-      $drupal8_vendor_local = d()->root . '/vendor';
-      $drupal8_vendor_above = d()->root . '/../vendor';
-      if (provision_file()->exists($drupal8_vendor_local)->status()) {
-        $absolute_root = realpath(dirname($drupal8_vendor_local));
-        drush_log(dt('CiviCRM: D8 vendor path: @vendor', array('@vendor' => $drupal8_vendor_local)), 'message');
-      }
-      elseif (provision_file()->exists($drupal8_vendor_above)->status()) {
-        $absolute_root = realpath(dirname($drupal8_vendor_above));
-        drush_log(dt('CiviCRM: D8 vendor path: @vendor', array('@vendor' => $drupal8_vendor_above)), 'message');
-      }
-      drush_log(dt('CiviCRM: D8 absolute_root: @path', array('@path' => $absolute_root)));
-      $crmpath = $absolute_root . '/vendor/civicrm/civicrm-core/';
-      if (provision_file()->exists($crmpath)->status()) {
-        drush_log(dt('CiviCRM: civicrm is in @path', array('@path' => $crmpath)));
-        return $crmpath;
-      }
-      else {
-        drush_log(dt('CiviCRM: ERROR NO civicrm found in @path', array('@path' => $crmpath)));
-        return $crmpath;
-      }
+  if ($module) {
+    // Issue#2942572 For D8 and D9, for now, we only support having CiviCRM in /vendor
+    // In Drupal 8 / 9 the version key has been dropped from the info.yml file so rely on core version check
+    if (drush_drupal_major_version() >= 8) {
+      $root = d()->root;
+      // If Drupal lives under a 'web' subdirectory (which is usually the case with composer),
+      // we remove the prefix, since the vendor directory is outside 'web'.
+      $root = preg_replace('#web/?$#', '', $root);
+      $crmpath = $root . '/vendor/civicrm/civicrm-core/';
+      drush_log(dt('CiviCRM: civicrm is in @path', array('@path' => $crmpath)));
+      return $crmpath;
     }
 
     // Get the parent directory of the module, which is in civicrm/drupal/civicrm.module
@@ -344,10 +330,8 @@ function _provision_civicrm_get_package_path($load_if_missing = FALSE) {
     // do#2364871 Workaround a BOA 2.3 issue
     // When civicrm is in an install profile, the civicrm drush module does not get loaded.
     if ($load_if_missing && ! function_exists('_civicrm_get_crmpath')) {
-      if (provision_file()->exists($crmpath . '/drupal/drush/civicrm.drush.inc')->status()) {
-        drush_log(dt('CiviCRM: loading file: civicrm.drush.inc.'));
-        require_once($crmpath . '/drupal/drush/civicrm.drush.inc');
-      }
+      drush_log(dt('CiviCRM: loading file: civicrm.drush.inc.'));
+      require_once($crmpath . '/drupal/drush/civicrm.drush.inc');
     }
 
     return $crmpath;
@@ -369,16 +353,8 @@ function _provision_civicrm_get_package_info() {
   $profile = drush_get_option('profile', NULL);
 
   if (isset($packages['modules']) && isset($packages['modules']['civicrm'])) {
-    $test_module = $packages['modules']['civicrm'];
-    $test_crmpath = dirname(dirname($test_module['filename']));
-    if (preg_match("/\/(static|distro)$/", $test_crmpath)) {
-      drush_log(dt('CiviCRM: reported in packages with invalid path @path - ignored', array('@path' => $test_crmpath)));
-      $module = NULL;
-    }
-    else {
-      drush_log(dt('CiviCRM: found civicrm in packages'));
-      $module = $packages['modules']['civicrm'];
-    }
+    drush_log(dt('CiviCRM: found civicrm in packages'));
+    $module = $packages['modules']['civicrm'];
   }
   elseif (isset($packages['sites-all']) && isset($packages['sites-all']['modules']) && isset($packages['sites-all']['modules']['civicrm'])) {
     $module = $packages['sites-all']['modules']['civicrm'];
@@ -393,7 +369,6 @@ function _provision_civicrm_get_package_info() {
     drush_log(dt('CiviCRM: found civicrm in packages of @profile profile modules', array('@profile' => $profile)));
   }
   else {
-    $module = NULL;
     // drush_log(dt('CiviCRM: civicrm not found in packages ' . print_r($packages, 1)));
   }
 
@@ -580,9 +555,9 @@ function provision_civicrm_civicrm_settings_template_alter(&$template) {
   );
 
   foreach ($replacements as $desc => $line) {
-    // Throw a message if any of our replacements cannot be found.
+    // Throw a warning if any of our replacements cannot be found.
     if (!preg_match($line['search_regex'], $template)) {
-      drush_log(dt('CiviCRM: Failed to ' . $desc), 'info');
+      drush_log(dt('CiviCRM: Failed to ' . $desc), 'warning');
     }
     else {
       $count = 0;
@@ -753,31 +728,13 @@ function _provision_civicrm_codebase_version() {
   $packages = drush_get_option('packages');
 
   if (array_key_exists('civicrm', $packages['modules'])) {
-    if (drush_drupal_major_version() <= 7) {
-      $full_version = $packages['modules']['civicrm']['info']['version'];
-      if ($full_version) {
-        drush_log(dt("CiviCRM 7 full_version @fullVer", array('@fullVer' => $full_version)), 'ok');
-      }
-      else {
-        drush_log(dt("CiviCRM 7 full_version problem", array('@fullVer' => $full_version)), 'warning');
-      }
-    }
-    else {
-      $full_version = $packages['modules']['civicrm']['version'];
-      if ($full_version) {
-        drush_log(dt("CiviCRM 8 full_version @fullVer", array('@fullVer' => $full_version)), 'ok');
-      }
-      else {
-        drush_log(dt("CiviCRM 8 full_version problem", array('@fullVer' => $full_version)), 'warning');
-      }
-    }
-    $parts = explode('-', $full_version);
-    $civicrm_version = $parts[1];
-    if (!$civicrm_version) {
-      $civicrm_version = $full_version;
-    }
-    drush_log(dt("CiviCRM civicrm_version @civiVer", array('@civiVer' => $civicrm_version)), 'ok');
+    $path = _provision_civicrm_get_package_path();
+    require_once $path . '/CRM/Utils/System.php';
+    require_once $path . '/CRM/Core/Exception.php';
+    // Use the CiviCRM function to determine the code version rather than module information as it may not be as reliable on d8/9
+    $civicrm_version = CRM_Utils_System::version();
   }
+  drush_log(dt('CiviCRM: code version is !ver', array('!ver' => $civicrm_version)));
 
   return $civicrm_version;
 }
