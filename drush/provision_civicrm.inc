@@ -300,6 +300,35 @@ function _provision_civicrm_is_site_context($load_if_missing = FALSE) {
 }
 
 /**
+ * Add platform root auto-discovery to avoid confusing
+ * Composer based D8+ codebase root with Drupal real root.
+ */
+function _provision_civicrm_auto_fix_platform_root($isroot) {
+
+  $test_root_index = $isroot . '/index.php';
+  $test_root_docroot = $isroot . '/docroot/index.php';
+  $test_root_html = $isroot . '/html/index.php';
+  $test_root_web = $isroot . '/web/index.php';
+
+  if (!provision_file()->exists($test_root_index)->status()) {
+    drush_log(dt("Platform path needs correction, running auto-discovery.."), 'notice');
+    if (provision_file()->exists($test_root_docroot)->status()) {
+      drush_log(dt("Platform real root index: @realroot", array('@realroot' => $test_root_docroot)), 'debug');
+      $isroot = $isroot . '/docroot';
+    }
+    elseif (provision_file()->exists($test_root_html)->status()) {
+      drush_log(dt("Platform real root index: @realroot", array('@realroot' => $test_root_html)), 'debug');
+      $isroot = $isroot . '/html';
+    }
+    elseif (provision_file()->exists($test_root_web)->status()) {
+      drush_log(dt("Platform real root index: @realroot", array('@realroot' => $test_root_web)), 'debug');
+      $isroot = $isroot . '/web';
+    }
+  }
+  return $isroot;
+}
+
+/**
  * Get the path where the CiviCRM module is installed
  * Ex: /var/aegir/platforms/[...]/sites/all/modules/civicrm
  *
@@ -314,11 +343,8 @@ function _provision_civicrm_get_package_path($load_if_missing = FALSE) {
     // Issue#2942572 For D8 and D9, for now, we only support having CiviCRM in /vendor
     // In Drupal 8 / 9 the version key has been dropped from the info.yml file so rely on core version check
     if (drush_drupal_major_version() >= 8) {
-      $root = d()->root;
-      // If Drupal lives under a 'web' subdirectory (which is usually the case with composer),
-      // we remove the prefix, since the vendor directory is outside 'web'.
-      $root = preg_replace('#web/?$#', '', $root);
-      $crmpath = $root . '/vendor/civicrm/civicrm-core/';
+      d()->root = _provision_civicrm_auto_fix_platform_root(d()->root);
+      $crmpath = d()->root . '/vendor/civicrm/civicrm-core/';
       drush_log(dt('CiviCRM: civicrm is in @path', array('@path' => $crmpath)));
       return $crmpath;
     }
@@ -466,6 +492,7 @@ function _provision_civicrm_regenerate_settings() {
  */
 function provision_civicrm_regenerate_settings_file($dbuser, $dbpass, $dbhost, $dbname, $crmPath) {
   $sitekey = d()->civicrm_sitekey;
+  d()->root = _provision_civicrm_auto_fix_platform_root(d()->root);
   $drupalRoot = d()->root;
   $siteRoot   = d()->site_path;
   $crmPath    = _provision_civicrm_get_package_path();
