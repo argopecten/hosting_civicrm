@@ -54,8 +54,6 @@ function drush_provision_civicrm_post_provision_install($url = null) {
     'link_title' => 'CiviCRM',
     'link_path' => 'civicrm/dashboard',
     'module' => 'civicrm',
-    'menu_name' => 'navigation',
-    'options' => array('alter' => TRUE),
   );
   menu_link_save($options);
 
