@@ -768,8 +768,8 @@ function _provision_civicrm_codebase_version() {
   if (array_key_exists('civicrm', $packages['modules'])) {
     $path = _provision_civicrm_get_package_path();
     require_once $path . '/CRM/Utils/System.php';
-    require_once $path . '/CRM/Core/Error.php';
-    // Use the CiviCRM function to determine the code version rather than module information as it may not be as reliable on d8/9
+    // Use the CiviCRM function to determine the code version rather than
+    // module information as it may not be as reliable on d8/9
     $civicrm_version = CRM_Utils_System::version();
   }
   drush_log(dt('CiviCRM: code version is !ver', array('!ver' => $civicrm_version)));
