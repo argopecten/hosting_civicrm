@@ -44,6 +44,25 @@ function drush_provision_civicrm_post_provision_install($url = null) {
   // Clear Config.IDS.ini
   _provision_civicrm_clear_config_cache();
 
+  db_query("UPDATE {system} SET weight = 100 WHERE name = 'civicrm'");
+
+  // menu_rebuild();
+  // menu_link_maintain('civicrm', 'delete', 'civicrm', 'CiviCRM');
+
+  // Create a CiviCRM dashboard link in the navigation menu.
+  $options = array(
+    'link_title' => 'CiviCRM',
+    'link_path' => 'civicrm/dashboard',
+    'module' => 'civicrm',
+    'menu_name' => 'navigation',
+    'options' => array('alter' => TRUE),
+  );
+  menu_link_save($options);
+
+  // Update the menu router and cache information.
+  menu_rebuild();
+  menu_cache_clear_all();
+
   drush_log(dt("CiviCRM: Installation complete!"), 'ok');
 }
 
