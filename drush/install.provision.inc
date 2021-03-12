@@ -63,6 +63,8 @@ function drush_provision_civicrm_post_provision_install($url = null) {
   menu_rebuild();
   menu_cache_clear_all();
 
+  drush_log(dt("CiviCRM: dashboard link in the navigation menu added in drush_provision_civicrm_post_provision_install."), 'ok');
+
   drush_log(dt("CiviCRM: Installation complete!"), 'ok');
 }
 
