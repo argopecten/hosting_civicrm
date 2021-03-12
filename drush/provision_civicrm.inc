@@ -38,7 +38,7 @@ function provision_civicrm_initialize() {
     return TRUE;
   }
   elseif (function_exists('civicrm_initialize')) {
-    civicrm_initialize();
+    _civicrm_init();
     return TRUE;
   }
 
@@ -677,7 +677,11 @@ function _provision_civicrm_upgradedb() {
     return;
   }
 
-  _civicrm_init();
+  // _civicrm_init();
+  if (!provision_civicrm_initialize()) {
+    drush_log(dt("CiviCRM: _provision_civicrm_upgradedb failed to initialize CiviCRM"));
+    return;
+  }
 
   drush_log(dt("CiviCRM: in _provision_civicrm_upgradedb(), _civicrm_init() worked, comparing code and schema versions."));
 

@@ -78,7 +78,11 @@ function drush_provision_civicrm_post_provision_verify($url = NULL) {
     return;
   }
 
-  _civicrm_init();
+  // _civicrm_init();
+  if (!provision_civicrm_initialize()) {
+    drush_log(dt("CiviCRM: drush_provision_civicrm_post_provision_verify failed to initialize CiviCRM"));
+    return;
+  }
   _provision_civicrm_check_upgrade_mode();
 
   // verify might return fail if, for example, this is a very old version of CiviCRM
