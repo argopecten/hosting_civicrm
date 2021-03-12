@@ -339,7 +339,7 @@ function _provision_civicrm_auto_fix_platform_root($isroot) {
 function _provision_civicrm_get_package_path($load_if_missing = FALSE) {
   $module = _provision_civicrm_get_package_info();
 
-  if ($module && $module != NULL) {
+  if ($module) {
     // Issue#2942572 For D8 and D9, for now, we only support having CiviCRM in /vendor
     // In Drupal 8 / 9 the version key has been dropped from the info.yml file so rely on core version check
     if (drush_drupal_major_version() >= 8) {
@@ -356,10 +356,8 @@ function _provision_civicrm_get_package_path($load_if_missing = FALSE) {
     // do#2364871 Workaround a BOA 2.3 issue
     // When civicrm is in an install profile, the civicrm drush module does not get loaded.
     if ($load_if_missing && ! function_exists('_civicrm_get_crmpath')) {
-      if (provision_file()->exists($crmpath . '/drupal/drush/civicrm.drush.inc')->status()) {
-        drush_log(dt('CiviCRM: loading file: civicrm.drush.inc.'));
-        require_once($crmpath . '/drupal/drush/civicrm.drush.inc');
-      }
+      drush_log(dt('CiviCRM: loading file: civicrm.drush.inc.'));
+      require_once($crmpath . '/drupal/drush/civicrm.drush.inc');
     }
 
     return $crmpath;
@@ -381,16 +379,8 @@ function _provision_civicrm_get_package_info() {
   $profile = drush_get_option('profile', NULL);
 
   if (isset($packages['modules']) && isset($packages['modules']['civicrm'])) {
-    $test_module = $packages['modules']['civicrm'];
-    $test_crmpath = dirname(dirname($test_module['filename']));
-    if (preg_match("/\/(static|distro)$/", $test_crmpath)) {
-      drush_log(dt('CiviCRM: reported in packages with invalid path @path - ignored', array('@path' => $test_crmpath)));
-      $module = NULL;
-    }
-    else {
-      drush_log(dt('CiviCRM: found civicrm in packages'));
-      $module = $packages['modules']['civicrm'];
-    }
+    drush_log(dt('CiviCRM: found civicrm in packages'));
+    $module = $packages['modules']['civicrm'];
   }
   elseif (isset($packages['sites-all']) && isset($packages['sites-all']['modules']) && isset($packages['sites-all']['modules']['civicrm'])) {
     $module = $packages['sites-all']['modules']['civicrm'];
@@ -405,7 +395,6 @@ function _provision_civicrm_get_package_info() {
     drush_log(dt('CiviCRM: found civicrm in packages of @profile profile modules', array('@profile' => $profile)));
   }
   else {
-    $module = NULL;
     // drush_log(dt('CiviCRM: civicrm not found in packages ' . print_r($packages, 1)));
   }
 
