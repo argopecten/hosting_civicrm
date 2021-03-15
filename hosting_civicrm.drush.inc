@@ -38,7 +38,7 @@ function hosting_civicrm_drush_context_import($context, &$node) {
  * Implements hook_post_hosting_TASK_TYPE_task().
  */
 function hosting_civicrm_post_hosting_install_task($task, $data) {
-  if ($task->ref->type == 'site' && isset($task->ref->civicrm_version)) {
+  if ($task->ref->type == 'site') {
     // Verify the site to fix permissions and ownership, if applicable.
     hosting_add_task($task->rid, 'verify');
     hosting_add_task($task->rid, 'flush_cache');
