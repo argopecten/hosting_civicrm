@@ -41,5 +41,6 @@ function hosting_civicrm_post_hosting_install_task($task, $data) {
   if ($task->ref->type == 'site' && isset($task->ref->civicrm_version)) {
     // Verify the site to fix permissions and ownership, if applicable.
     hosting_add_task($task->rid, 'verify');
+    hosting_add_task($task->rid, 'flush_cache');
   }
 }

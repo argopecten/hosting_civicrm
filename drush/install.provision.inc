@@ -46,23 +46,24 @@ function drush_provision_civicrm_post_provision_install($url = null) {
 
   db_query("UPDATE {system} SET weight = 100 WHERE name = 'civicrm'");
 
-  // menu_rebuild();
-  // menu_link_maintain('civicrm', 'delete', 'civicrm', 'CiviCRM');
+  // Update the menu router and cache information.
+  menu_cache_clear_all();
 
   // Create a CiviCRM dashboard link in the navigation menu.
-  $options = array(
+  $options_dashboard = array(
     'link_title' => 'CiviCRM',
     'link_path' => 'civicrm/dashboard',
-    'module' => 'civicrm',
+    'router_path' => 'civicrm/dashboard',
+    'language'  => 'en',
+    'customized' => 1,
+    'options' => array('alter' => TRUE),
   );
-  menu_link_save($options);
+  menu_link_save($options_dashboard);
 
   // Update the menu router and cache information.
-  menu_rebuild();
   menu_cache_clear_all();
 
   drush_log(dt("CiviCRM: dashboard link in the navigation menu added in drush_provision_civicrm_post_provision_install."), 'ok');
-
   drush_log(dt("CiviCRM: Installation complete!"), 'ok');
 }
 
