@@ -647,7 +647,9 @@ function _provision_civicrm_codebase_version() {
   }
 
   if ($crmPath) {
-    require_once $vendorPath . '/autoload.php';
+    if (is_readable($vendorPath)) {
+      require_once $vendorPath;
+    }
     require_once $crmPath . '/CRM/Utils/System.php';
     $codeVer = CRM_Utils_System::version();
   }
