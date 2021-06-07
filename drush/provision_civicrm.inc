@@ -674,7 +674,7 @@ function _provision_civicrm_codebase_version() {
   }
 
   $crmPath = _provision_civicrm_get_package_path();
-  $vendorPath = $crmPath . '/vendor/autoload.php';
+  $vendorPath = $crmPath . '/vendor/';
 
   if ($crmPath) {
     if (is_readable($vendorPath)) {
