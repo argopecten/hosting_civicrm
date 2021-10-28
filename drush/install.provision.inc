@@ -41,7 +41,9 @@ function drush_provision_civicrm_post_provision_install($url = null) {
   // Clear Config.IDS.ini
   _provision_civicrm_clear_config_cache();
 
-  db_query("UPDATE {system} SET weight = 100 WHERE name = 'civicrm'");
+  if (drush_drupal_major_version() <= 7) {
+    db_query("UPDATE {system} SET weight = 100 WHERE name = 'civicrm'");
+  }
 
   // Update the menu router and cache information.
   menu_cache_clear_all();
