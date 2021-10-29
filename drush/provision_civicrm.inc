@@ -708,6 +708,11 @@ function _provision_civicrm_database_version() {
     case 9:
       $dbVer = db_query('select version from civicrm_domain where id = :id', array(':id' => CIVICRM_DOMAIN_ID))->fetchField();
       break;
+    case 9:
+      $dbVer = \Drupal::database()->query('select version from civicrm_domain where id = :id', array(':id' => CIVICRM_DOMAIN_ID))->fetchField();
+      break;
+    default:
+      drush_log(dt('_provision_civicrm_database_version: unsupported Drupal version: !version', array('!version' => drush_drupal_major_version())), 'warning');
   }
 
   drush_log(dt('CiviCRM: db version is !ver', array('!ver' => $dbVer)));
