@@ -49,15 +49,18 @@ function drush_provision_civicrm_post_provision_install($url = null) {
   menu_cache_clear_all();
 
   // Create a CiviCRM dashboard link in the navigation menu.
-  $options_dashboard = array(
-    'link_title' => 'CiviCRM',
-    'link_path' => 'civicrm/dashboard',
-    'router_path' => 'civicrm/dashboard',
-    'language'  => 'en',
-    'customized' => 1,
-    'options' => array('alter' => TRUE),
-  );
-  menu_link_save($options_dashboard);
+  if (drush_drupal_major_version() <= 7) {
+    // Create a CiviCRM dashboard link in the navigation menu.
+    $options_dashboard = array(
+      'link_title' => 'CiviCRM',
+      'link_path' => 'civicrm/dashboard',
+      'router_path' => 'civicrm/dashboard',
+      'language'  => 'en',
+      'customized' => 1,
+      'options' => array('alter' => TRUE),
+    );
+    menu_link_save($options_dashboard);
+  }
 
   // Update the menu router and cache information.
   menu_cache_clear_all();
