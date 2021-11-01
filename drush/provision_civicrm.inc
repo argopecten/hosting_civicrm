@@ -238,7 +238,7 @@ function _provision_civicrm_is_site_context($load_if_missing = FALSE) {
 }
 
 /**
- * Platform app root auto-discovery to help detecting
+ * Platform app root auto-discovery to help in detecting
  * the correct path to /vendor/civicrm/civicrm-core/.
  */
 function _provision_civicrm_find_platform_app_root($isroot) {
