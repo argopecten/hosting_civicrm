@@ -243,25 +243,24 @@ function _provision_civicrm_is_site_context($load_if_missing = FALSE) {
  */
 function _provision_civicrm_find_platform_app_root($isroot) {
 
-  $test_root_index = $isroot . '/index.php';
-  $test_root_docroot = $isroot . '/docroot/index.php';
-  $test_root_html = $isroot . '/html/index.php';
-  $test_root_web = $isroot . '/web/index.php';
+  $appRoot = $isroot;
 
-  if (!provision_file()->exists($test_root_index)->status()) {
-    drush_log(dt("Platform app root path needs correction, running auto-discovery.."), 'notice');
-    if (provision_file()->exists($test_root_docroot)->status()) {
-      $isroot = preg_replace('#docroot/?$#', '', $isroot);
-      drush_log(dt("Platform corrected app root: @approot", array('@approot' => $isroot)), 'debug');
-    }
-    elseif (provision_file()->exists($test_root_html)->status()) {
-      $isroot = preg_replace('#html/?$#', '', $isroot);
-      drush_log(dt("Platform corrected app root: @approot", array('@approot' => $isroot)), 'debug');
-    }
-    elseif (provision_file()->exists($test_root_web)->status()) {
-      $isroot = preg_replace('#web/?$#', '', $isroot);
-      drush_log(dt("Platform corrected app root: @approot", array('@approot' => $isroot)), 'debug');
-    }
+  $test_root_docroot = preg_replace('#docroot/?$#', '', $appRoot) . '/docroot/index.php';
+  $test_root_html = preg_replace('#html/?$#', '', $appRoot) . '/html/index.php';
+  $test_root_web = preg_replace('#web/?$#', '', $appRoot) . '/web/index.php';
+
+  drush_log(dt("Forcing platform app root correction, running auto-discovery.."), 'notice');
+  if (provision_file()->exists($test_root_docroot)->status()) {
+    $isroot = preg_replace('#docroot/?$#', '', $isroot);
+    drush_log(dt("Platform corrected app root: @approot", array('@approot' => $isroot)), 'debug');
+  }
+  elseif (provision_file()->exists($test_root_html)->status()) {
+    $isroot = preg_replace('#html/?$#', '', $isroot);
+    drush_log(dt("Platform corrected app root: @approot", array('@approot' => $isroot)), 'debug');
+  }
+  elseif (provision_file()->exists($test_root_web)->status()) {
+    $isroot = preg_replace('#web/?$#', '', $isroot);
+    drush_log(dt("Platform corrected app root: @approot", array('@approot' => $isroot)), 'debug');
   }
   else {
     drush_log(dt("Platform app root: @approot", array('@approot' => $isroot)), 'debug');
