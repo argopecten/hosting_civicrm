@@ -41,12 +41,15 @@ function drush_provision_civicrm_post_provision_install($url = null) {
   // Clear Config.IDS.ini
   _provision_civicrm_clear_config_cache();
 
+  // Create a CiviCRM dashboard link in the navigation menu for older core.
   if (drush_drupal_major_version() <= 7) {
-    db_query("UPDATE {system} SET weight = 100 WHERE name = 'civicrm'");
-  }
 
-  // Create a CiviCRM dashboard link in the navigation menu.
-  if (drush_drupal_major_version() <= 7) {
+    // Fix the civicrm weight
+    db_query("UPDATE {system} SET weight = 100 WHERE name = 'civicrm'");
+
+    // Update the menu router and cache information first.
+    menu_cache_clear_all();
+
     // Create a CiviCRM dashboard link in the navigation menu.
     $options_dashboard = array(
       'link_title' => 'CiviCRM',
@@ -58,7 +61,7 @@ function drush_provision_civicrm_post_provision_install($url = null) {
     );
     menu_link_save($options_dashboard);
 
-    // Update the menu router and cache information.
+    // Update the menu router and cache information again.
     menu_cache_clear_all();
 
     drush_log(dt("CiviCRM: dashboard link in the navigation menu added in drush_provision_civicrm_post_provision_install."), 'ok');
