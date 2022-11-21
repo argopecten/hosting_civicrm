@@ -741,6 +741,7 @@ function _provision_civicrm_database_version() {
       $dbVer = db_query('select version from civicrm_domain where id = :id', array(':id' => CIVICRM_DOMAIN_ID))->fetchField();
       break;
     case 9:
+    case 10:
       $dbVer = \Drupal::database()->query('select version from civicrm_domain where id = :id', array(':id' => CIVICRM_DOMAIN_ID))->fetchField();
       break;
     default:
