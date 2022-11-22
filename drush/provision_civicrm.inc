@@ -122,12 +122,11 @@ function _provision_civicrm_clear_config_cache() {
   //
   // Also, civicrm_cache_clear() assumes that _civi_init() has been
   // done, and if we init, then the Config.IDS.ini will be parsed.
-
-  $configFiles = array(
+  $configFiles = [
     '/files/civicrm/ConfigAndLog/Config.IDS.ini',
     '/files/civicrm/drush/ConfigAndLog/Config.IDS.ini',
     '/files/civicrm/templates_c/en_US/ConfigAndLog/Config.IDS.ini',
-  );
+  ];
 
   foreach ($configFiles as $c) {
     $ids = d()->site_path . $c;
@@ -153,7 +152,10 @@ function _provision_civicrm_fixresourceurls() {
   $host = d()->uri;
 
   if (drush_drupal_major_version() >= 8) {
-    $root = _provision_civicrm_find_platform_app_root(d()->root);
+    $root = _provision_civicrm_find_platform_web_root(d()->root);
+  }
+  else {
+    $root = d()->root;
   }
 
   // Ignoring userFrameworkResourceURL, which should be set to '[civicrm.root]'
@@ -472,11 +474,12 @@ function provision_civicrm_regenerate_settings_file($dbuser, $dbpass, $dbhost, $
   $webRoot = _provision_civicrm_find_platform_web_root(d()->root);
   $siteRoot   = d()->site_path;
   $crmPath    = _provision_civicrm_get_package_path();
+  $civicrm_settings_filename = "$siteRoot/civicrm.settings.php";
 
-  $files = array(
+  $files = [
     "$crmPath/templates/CRM/common/civicrm.settings.php.template",
     "$crmPath/templates/CRM/common/civicrm.settings.php.tpl"
-  );
+  ];
 
   // Allow overriding the template file search paths.
   drush_command_invoke_all_ref('civicrm_settings_template_files_alter', $files);
@@ -510,7 +513,7 @@ function provision_civicrm_regenerate_settings_file($dbuser, $dbpass, $dbhost, $
     $cms = $v['cms'];
   }
 
-  $params = array(
+  $params = [
     'crmRoot' => $crmPath,
     'templateCompileDir' => "$siteRoot/files/civicrm/templates_c",
     'frontEnd' => 0,
@@ -525,7 +528,52 @@ function provision_civicrm_regenerate_settings_file($dbuser, $dbpass, $dbhost, $
     'CMSdbHost' => $db_spec['host'],
     'CMSdbName' => $db_spec['database'],
     'siteKey' => $sitekey,
-  );
+  ];
+
+  // Fetch the existing cred/sign keys, if the civicrm.settings.php file exists
+  // Copied from hosting_wordpress
+  if (file_exists($civicrm_settings_filename)) {
+    $settings = file_get_contents($civicrm_settings_filename);
+
+    // Match: define( '_CIVICRM_CRED_KEYS', 'aes-cbc:....');
+    if (preg_match("/define\(\s*'_CIVICRM_CRED_KEYS',\s*'([-_:0-9A-Za-z]+)'\)/", $settings, $matches)) {
+      $params['credKeys'] = $matches[1];
+    }
+    elseif (preg_match("/define\(\s*'CIVICRM_CRED_KEYS',\s*'([-_:0-9A-Za-z]+)'\)/", $settings, $matches)) {
+      $params['credKeys'] = $matches[1];
+    }
+    else {
+      drush_log(dt("CiviCRM: CIVICRM_CRED_KEYS not found"), 'warning');
+    }
+
+    // Match: define( '_CIVICRM_SIGN_KEYS', 'jw-hs256:....');
+    if (preg_match("/define\(\s*'_CIVICRM_SIGN_KEYS',\s*'([-_:0-9A-Za-z]+)'\)/", $settings, $matches)) {
+      $params['signKeys'] = $matches[1];
+    }
+    elseif (preg_match("/define\(\s*'CIVICRM_SIGN_KEYS',\s*'([-_:0-9A-Za-z]+)'\)/", $settings, $matches)) {
+      $params['signKeys'] = $matches[1];
+    }
+    else {
+      drush_log(dt("CiviCRM: CIVICRM_SIGN_KEYS not found"), 'warning');
+    }
+  }
+
+  // Generate new cred/sign keys if necessary
+  if (empty($params['credKeys']) || empty($params['signKeys']) || preg_match('/RANDOM_/', $params['credKeys']) || preg_match('/RANDOM_/', $params['signKeys'])) {
+    drush_log(dt("CiviCRM: Generating new CIVICRM_SIGN_KEYS and CIVICRM_CRED_KEYS"), 'ok');
+
+    // Copied from:
+    // setup/plugins/installFiles/GenerateSignKey.civi-setup.php
+    // setup/plugins/installFiles/GenerateCredKey.civi-setup.php
+    $toAlphanum = function($bits) {
+      return preg_replace(';[^a-zA-Z0-9];', '', base64_encode($bits));
+    };
+
+    $params['credKeys'] = 'aes-cbc:hkdf-sha256:' . $toAlphanum(random_bytes(37));
+    $params['signKeys'] = 'jwt-hs256:hkdf-sha256:' . $toAlphanum(random_bytes(40));
+  }
+
+  // Generate the new file contents
   $str = file_get_contents($settingsTplFile);
   // Allow changes to the settings file template.
   drush_command_invoke_all_ref('civicrm_settings_template_alter', $str);
@@ -536,46 +584,9 @@ function provision_civicrm_regenerate_settings_file($dbuser, $dbpass, $dbhost, $
   }
   $str = trim($str);
 
-  $configFile = "$siteRoot/civicrm.settings.php";
-  civicrm_write_file($configFile, $str);
-  @drush_op('chmod', "$configFile", 0644);
-  drush_log(dt("Settings file generated: !file", array('!file' => $configFile)), 'ok');
-}
-
-/**
- * Implements hook_civicrm_settings_template_alter().
- *
- * @see provision_civicrm_civicrm_settings_parameters_alter().
- */
-function provision_civicrm_civicrm_settings_template_alter(&$template) {
-  $replacements = array();
-  $replacements['allow uploadDir to be overridden.'] = array(
-    'search_regex' => '/^.*?civicrm_setting.*uploadDir.*\n?/m',
-    'replace_line' => "\$civicrm_setting['Directory Preferences']['uploadDir'] = '%%uploadDir%%';\n",
-  );
-
-  foreach ($replacements as $desc => $line) {
-    // Throw a message if any of our replacements cannot be found.
-    if (!preg_match($line['search_regex'], $template)) {
-      drush_log(dt('CiviCRM: Failed to ' . $desc), 'info');
-    }
-    else {
-      $count = 0;
-      $template = preg_replace($line['search_regex'], $line['replace_line'], $template, -1, $count);
-      if ($count > 0) {
-        drush_log(dt('CiviCRM: Succeeded to ' . $desc), 'success');
-      }
-    }
-  }
-}
-
-/**
- * Implements hook_civicrm_settings_parameters_alter().
- *
- * @see provision_civicrm_civicrm_settings_template_alter().
- */
-function provision_civicrm_civicrm_settings_parameters_alter(&$params) {
-  $params['uploadDir'] = d()->site_path . "/files/civicrm/upload";
+  civicrm_write_file($civicrm_settings_filename, $str);
+  @drush_op('chmod', "$civicrm_settings_filename", 0644);
+  drush_log(dt("Settings file generated: !file", array('!file' => $civicrm_settings_filename)), 'ok');
 }
 
 function provision_civicrm_verify_common() {
@@ -600,15 +611,6 @@ function provision_civicrm_verify_common() {
     }
   }
 
-  drush_set_option('oldVal_1', drush_get_option('civicrm_old_path'));
-  drush_set_option('newVal_1', drush_get_context('DRUSH_DRUPAL_ROOT'));
-
-  drush_set_option('oldVal_2', drush_get_option('civicrm_old_baseurl'));
-  drush_set_option('newVal_2', 'http://' . drush_get_option('uri'));
-
-  // Update database settings for the directory paths
-  drush_civicrm_update_cfg();
-
   // Update Resource URLs
   _provision_civicrm_fixresourceurls();
 
@@ -624,6 +626,9 @@ function provision_civicrm_verify_common() {
  *
  * Code forked from the CiviCRM drush module
  * Adapted to check the upgrade result and support multiple CiviCRM versions.
+ *
+ * @todo We should exec a process to run the upgrade, so that a failed upgrade
+ * does not make Aegir crash and/or rollback.
  */
 function _provision_civicrm_upgradedb() {
   drush_log(dt("CiviCRM: in _provision_civicrm_upgradedb(), calling _civicrm_init()"));
@@ -732,12 +737,15 @@ function _provision_civicrm_codebase_version() {
   }
 
   $crmPath = _provision_civicrm_get_package_path();
-  $vendorPath = $crmPath . '/vendor/autoload.php';
+  $vendorPath = $crmPath . '/vendor/';
+
+  if (drush_drupal_major_version() >= 8) {
+    $appRoot = _provision_civicrm_find_platform_app_root(d()->root);
+    $vendorPath = $appRoot . '/vendor/';
+  }
 
   if ($crmPath) {
-    if (is_readable($vendorPath)) {
-      require_once $vendorPath;
-    }
+    require_once $vendorPath . '/autoload.php';
     require_once $crmPath . '/CRM/Utils/System.php';
     $codeVer = CRM_Utils_System::version();
   }
