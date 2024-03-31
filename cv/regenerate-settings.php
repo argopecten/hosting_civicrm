@@ -16,6 +16,9 @@ $corePath = $GLOBALS['civicrm_root'];
 // Grab Drush relevant variables
 require_once getcwd() . '/drushrc.php';
 
+// Ensure that https URLs are generated, especially on WordPress
+$_SERVER['HTTPS'] = 'on';
+
 \Civi\Setup::assertProtocolCompatibility(1.0);
 \Civi\Setup::init([
   // This is just enough information to get going. *.civi-setup.php does more scanning.
