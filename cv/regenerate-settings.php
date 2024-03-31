@@ -187,5 +187,6 @@ if (CIVICRM_UF == 'WordPress') {
 }
 
 // Output the file
+chmod($model->settingsPath, 0640);
 file_put_contents($model->settingsPath, $str);
 chmod($model->settingsPath, 0440);
