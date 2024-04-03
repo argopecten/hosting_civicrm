@@ -52,3 +52,33 @@ function provision_civicrm_provision_register_autoload() {
     provision_autoload_register_prefix('Provision_', dirname(__FILE__));
   }
 }
+
+/**
+ * Implementation of hook_drush_command().
+ */
+function provision_civicrm_drush_command() {
+  $items['provision-civicrm-install'] = array(
+    'description' => 'Install CiviCRM.',
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
+    'options' => array(
+      'client_email' => dt('The email address of the client to use.'),
+    ),
+  );
+  $items['provision-civicrm-verify'] = array(
+    'description' => 'Verify CiviCRM.',
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
+  );
+  $items['provision-civicrm-enable'] = array(
+    'description' => 'Enable a CiviCRM site',
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
+  );
+  $items['provision-civicrm-disable'] = array(
+    'description' => 'Disable a CiviCRM site',
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
+  );
+  $items['provision-civicrm-delete'] = array(
+    'description' => 'Delete CiviCRM.',
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
+  );
+  return $items;
+}
