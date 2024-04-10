@@ -97,10 +97,10 @@ if (file_exists($model->settingsPath)) {
 */
 
   // Define imported values
-  $model->credKeys = [$defines['_CIVICRM_CRED_KEYS']];
-  $model->deployID = $defines['_CIVICRM_DEPLOY_ID'];
+  $model->credKeys = [$defines['_CIVICRM_CRED_KEYS'] ?? $defines['CIVICRM_CRED_KEYS']];
+  $model->deployID = $defines['_CIVICRM_DEPLOY_ID'] ?? $defines['CIVICRM_DEPLOY_ID'];
   $model->siteKey = $defines['CIVICRM_SITE_KEY'];
-  $model->signKeys = [$defines['_CIVICRM_SIGN_KEYS']];
+  $model->signKeys = [$defines['_CIVICRM_SIGN_KEYS'] ?? $defines['CIVICRM_SIGN_KEYS']];
   $model->cms = $defines['CIVICRM_UF'];
   $model->cmsBaseUrl = $defines['CIVICRM_UF_BASEURL'];
   $model->templateCompilePath = $defines['CIVICRM_TEMPLATE_COMPILEDIR'];
