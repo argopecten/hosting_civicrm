@@ -79,18 +79,16 @@ function drush_provision_civicrm_post_provision_verify($url = NULL) {
     return;
   }
 
-  _civicrm_init();
-  _provision_civicrm_check_upgrade_mode();
+  if (function_exists('provision_civicrm_ansible_drush_init')) {
+    drush_log(dt("CiviCRM: Ansible detected, skipping drush_provision_civicrm_post_provision_verify"), 'ok');
+    return;
+  }
 
   // verify might return fail if, for example, this is a very old version of CiviCRM
   // in which case, no point continuing with the upgrade and cache clear.
   if (provision_civicrm_verify_common()) {
-    // In some circumstances during migrations, template_c directory can be
-    // deleted by a cache clear and the upgrade will fail.
-    provision_civicrm_setup_temp_directories();
-
-    // Run the CiviCRM upgrade procedure
-    _provision_civicrm_upgradedb();
+    // Run the CiviCRM database upgrade procedure
+    _provision_civicrm_run_cv_command('upgrade:db');
 
     // Only flush the cache if we are not upgrading. The upgrader already does a flush, and could
     // lead to odd errors such as: 'The dispatch policy prohibits event "hook_civicrm_permission"'
@@ -101,16 +99,8 @@ function drush_provision_civicrm_post_provision_verify($url = NULL) {
         variable_set('civicrm_class_loader', NULL);
       }
 
-      // Aprox. CiviCRM >= 4.2
-      if (function_exists('civicrm_api3')) {
-        // Run as a shell command, instead of PHP, so that fatal errors do not crash the verify task
-        _provision_civicrm_run_drush_command('cvapi --out=json system.flush');
-      }
-      else {
-        drush_log(dt("CiviCRM: Could not find the function to flush the cache. What version of CiviCRM are you using?"), 'warning');
-      }
-
-      drush_log(dt("CiviCRM: cache clear finished"));
+      // Run as a shell command, instead of PHP, so that fatal errors do not crash the verify task
+      _provision_civicrm_run_cv_command('flush');
     }
   }
 }

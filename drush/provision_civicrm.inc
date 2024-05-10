@@ -21,13 +21,6 @@ function provision_civicrm_provision_services() {
 }
 
 /**
- * Implements hook_civicrm_init()
- */
-function provision_civicrm_civicrm_init() {
-  return provision_civicrm_setup_temp_directories();
-}
-
-/**
  * Wrapper to initialize CiviCRM, depending on the CMS.
  *
  * Returns FALSE if this is not a CiviCRM site (ex: hostmaster).
@@ -46,55 +39,6 @@ function provision_civicrm_initialize() {
 }
 
 /**
- * Setup logs and template_c in a sub-directory to avoid permission
- * conflicts between the www-user and the aegir user.
- */
-function provision_civicrm_setup_temp_directories() {
-  require_once 'CRM/Core/Config.php';
-  $config = CRM_Core_Config::singleton();
-
-  // ConfigAndLog directory
-  $exists = provision_file()->exists($config->configAndLogDir)
-    ->succeed('CiviCRM: @path exists.')
-    ->status();
-
-  if (! $exists) {
-    $exists = provision_file()->mkdir($config->configAndLogDir)
-      ->succeed('CiviCRM: log path @path has been created.')
-      ->fail('CiviCRM: log path @path could not be created.', 'DRUSH_PERM_ERROR')
-      ->status();
-  }
-
-  // Smarty template directory
-  $exists = provision_file()->exists($config->templateCompileDir)
-    ->succeed('CiviCRM: @path exists.')
-    ->status();
-
-  if (! $exists) {
-    $exists = provision_file()->mkdir($config->templateCompileDir)
-      ->succeed('CiviCRM: compiled template path @path has been created.')
-      ->fail('CiviCRM: compiled template path @path could not be created.', 'DRUSH_PERM_ERROR')
-      ->status();
-  }
-
-  // Smarty template directory for the default locale.
-  $lcMessages = _provision_civicrm_get_default_locale();
-
-  $exists = provision_file()->exists($config->templateCompileDir . '/' . $lcMessages)
-    ->succeed('CiviCRM: @path exists.')
-    ->status();
-
-  if (! $exists) {
-    $exists = provision_file()->mkdir($config->templateCompileDir . '/' . $lcMessages)
-      ->succeed('CiviCRM: compiled template path @path has been created.')
-      ->fail('CiviCRM: compiled template path @path could not be created.', 'DRUSH_PERM_ERROR')
-      ->status();
-  }
-
-  return TRUE;
-}
-
-/**
  * Get the default CiviCRM locale.
  * This is inspired from CRM_Core_Smarty::getLocale().
  */
@@ -108,83 +52,6 @@ function _provision_civicrm_get_default_locale() {
   }
 
   return 'en_US';
-}
-
-/**
- * Update the CiviCRM Resource URLs
- * There must be a much simpler/cleaner way of doing this..
- */
-function _provision_civicrm_fixresourceurls() {
-  drush_log(dt("CiviCRM: Running _provision_civicrm_fixresourceurls to fix URL/path settings."));
-
-  $protocol = (d()->ssl_enabled || d()->https_enabled) ? 'https' : 'http';
-  $root = d()->root;
-  $host = d()->uri;
-
-  // Ignoring userFrameworkResourceURL, which should be set to '[civicrm.root]'
-  // and should not change when doing a migrate, for example.
-
-  // Only update the Directory settings if not using relative paths
-  $settings = [
-    'uploadDir' => "$root/sites/$host/files/civicrm/upload",
-    'customFileUploadDir' => "$root/sites/$host/files/civicrm/custom",
-    'imageUploadDir' => "$root/sites/$host/files/civicrm/persist/contribute",
-    'imageUploadURL' => "$protocol://$host/sites/$host/files/civicrm/persist/contribute",
-  ];
-
-  foreach ($settings as $setting => $default) {
-    $oldval = Civi::settings()->get($setting);
-
-    if (strpos($oldval, '[civicrm.files]') === FALSE) {
-      Civi::settings()->set($setting, $default);
-    }
-  }
-
-  $extensions_suffix = NULL;
-  $extensionsDir = Civi::settings()->get('extensionsDir');
-  $extensionsURL = Civi::settings()->get('extensionsURL');
-
-  drush_log('CiviCRM: current extensionsDir = ' . $extensionsDir, 'ok');
-
-  // Only update the extensionsDir if not using relative paths
-  if (strpos($extensionsDir, '[civicrm.files]') === FALSE) {
-    // Maybe a simple regexp would be simpler, but would require more testing
-    // This was copied from provision_symbiotic
-    if (file_exists("$root/sites/$host/modules/extensions/")) {
-      // Symbiotic default
-      $extensions_suffix = 'modules/extensions';
-    }
-    elseif (file_exists("$root/sites/$host/modules/civi-extensions/")) {
-      // Legacy Symbiotic
-      $extensions_suffix = 'modules/civi-extensions';
-    }
-    elseif (file_exists("$root/sites/$host/civiext/")) {
-      // civicrm.org
-      $extensions_suffix = 'civiext';
-    }
-    elseif (file_exists("$root/sites/$host/files/civicrm/extensions/")) {
-      $extensions_suffix = 'files/civicrm/extensions';
-    }
-
-    if ($extensions_suffix) {
-      if ($extensionsDir != "$root/sites/$host/$extensions_suffix/") {
-        drush_log(dt('CiviCRM: updated extensionsDir to @path', ['@path' => "$root/sites/$host/$extensions_suffix/"]), 'ok');
-        Civi::settings()->set('extensionsDir', "$root/sites/$host/$extensions_suffix/");
-      }
-      if ($extensionsURL != "$protocol://$host/sites/$host/$extensions_suffix") {
-        drush_log(dt('CiviCRM: updated extensionsURL to @url', ['@url' => "$protocol://$host/sites/$host/$extensions_suffix/"]), 'ok');
-        Civi::settings()->set('extensionsURL', "$protocol://$host/sites/$host/$extensions_suffix");
-      }
-    }
-    else {
-      // Reset to the CiviCRM default
-      drush_log(dt('CiviCRM: updated extensionsDir to @path', ['@path' => "[civicrm.files]"]), 'ok');
-      Civi::settings()->set('extensionsDir', '[civicrm.files]/ext/');
-      Civi::settings()->set('extensionsURL', '[civicrm.files]/ext/');
-    }
-  }
-
-  drush_log(dt("CiviCRM: Finished _provision_civicrm_fixresourceurls()."));
 }
 
 /**
@@ -447,26 +314,16 @@ function _provision_civicrm_database_version() {
     return $dbVer;
   }
 
-  $civicrmSettingsFile = d()->site_path . "/civicrm.settings.php";
-  include_once($civicrmSettingsFile);
+  $command = 'cd ' . escapeshellarg(d()->site_path) . ' && echo "select version from civicrm_domain limit 1" | cv sql | tail -1';
+  drush_log(dt("CiviCRM: running: %command", ['%command' => $command]), 'ok');
+  $dbVer = system($command, $retval);
 
-  switch (drush_drupal_major_version()) {
-    case 6:
-      $dbVer = db_result(db_query('select version from civicrm_domain where id = %d', CIVICRM_DOMAIN_ID));
-      break;
-
-    case 7:
-    case 8:
-      $dbVer = db_query('select version from civicrm_domain where id = :id', array(':id' => CIVICRM_DOMAIN_ID))->fetchField();
-      break;
-    case 9:
-      $dbVer = \Drupal::database()->query('select version from civicrm_domain where id = :id', array(':id' => CIVICRM_DOMAIN_ID))->fetchField();
-      break;
-    default:
-      drush_log(dt('_provision_civicrm_database_version: unsupported Drupal version: !version', array('!version' => drush_drupal_major_version())), 'warning');
+  if ($retval) {
+    drush_log(dt("CiviCRM: command failed {$retval} (the ConfigAndLog should have more details): %output", ['%output' => $dbVer]), 'warning');
+    return NULL;
   }
 
-  drush_log(dt('CiviCRM: db version is !ver', array('!ver' => $dbVer)));
+  drush_log(dt('CiviCRM: db version is !ver', ['!ver' => $dbVer]), 'ok');
   return $dbVer;
 }
 
