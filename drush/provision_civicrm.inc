@@ -300,7 +300,7 @@ function _provision_civicrm_codebase_version() {
     $codeVer = CRM_Utils_System::version();
   }
 
-  drush_log(dt('CiviCRM: code version is !ver', array('!ver' => $codeVer)));
+  drush_log(dt('CiviCRM: code version is !ver', ['!ver' => $codeVer]), 'ok');
   return $codeVer;
 }
 
@@ -382,5 +382,5 @@ function _provision_civicrm_run_cv_command($command) {
     drush_log(dt("CiviCRM: command success: %output", ['%output' => $json]), 'ok');
   }
 
-  return $json;
+  return $output;
 }
