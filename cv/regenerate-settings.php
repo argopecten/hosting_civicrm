@@ -1,6 +1,15 @@
 <?php
 
-// This should be invoked with: cv php:script cv/regenerate-settings.php
+// This should be invoked with: cv php:script cv/regenerate-settings.php [host]
+// if a [host] is passed, then the site key and creds are rotated (ex: for site cloning)
+// host format must include https://
+//
+// This script assumes that you have a somewhat working CiviCRM installation
+// It might fix some settings, but the main objective is to regenerate the settings
+// file using the latest CiviCRM settings template.
+
+$host = $argv[1] ?? CIVICRM_UF_BASEURL;
+$regen_keys = !empty($argv[1]);
 
 function is_constant($token) {
   return $token == T_CONSTANT_ENCAPSED_STRING || $token == T_STRING ||
@@ -26,7 +35,7 @@ $_SERVER['HTTPS'] = 'on';
   // This should not be necessary but otherwise we get very weird results
   // such as: http://crm.example.org/usr/local/bin/usr/local/bin/aegir
   // c.f. civicrm-core/setup/plugins/init/Drupal8.civi-setup.php
-  'cmsBaseUrl' => CIVICRM_UF_BASEURL,
+  'cmsBaseUrl' => $host,
   'srcPath' => $corePath,
 ]);
 
@@ -51,7 +60,6 @@ $model->db = [
 $model = $setup->getModel();
 
 // Is there an existing civicrm.settings.php file? If so use existing values
-$importSettings = FALSE;
 if (file_exists($model->settingsPath)) {
   $settingsOld = file_get_contents($model->settingsPath, true);
   if ($settingsOld !== false) {
@@ -89,25 +97,21 @@ if (file_exists($model->settingsPath)) {
 
     }
   }
-  $importSettings = TRUE;
-/* For debugging
-  foreach($defines as $k => $v) {
-    echo "'$k' => '$v'\n";
-  }
-*/
 
   // Define imported values
-  $model->credKeys = [$defines['_CIVICRM_CRED_KEYS'] ?? $defines['CIVICRM_CRED_KEYS']];
-  $model->deployID = $defines['_CIVICRM_DEPLOY_ID'] ?? $defines['CIVICRM_DEPLOY_ID'];
-  $model->siteKey = $defines['CIVICRM_SITE_KEY'];
-  $model->signKeys = [$defines['_CIVICRM_SIGN_KEYS'] ?? $defines['CIVICRM_SIGN_KEYS']];
+  if (!$regen_keys) {
+    $model->credKeys = [$defines['_CIVICRM_CRED_KEYS'] ?? $defines['CIVICRM_CRED_KEYS']];
+    $model->deployID = $defines['_CIVICRM_DEPLOY_ID'] ?? $defines['CIVICRM_DEPLOY_ID'];
+    $model->siteKey = $defines['CIVICRM_SITE_KEY'];
+    $model->signKeys = [$defines['_CIVICRM_SIGN_KEYS'] ?? $defines['CIVICRM_SIGN_KEYS']];
+  }
   $model->cms = $defines['CIVICRM_UF'];
-  $model->cmsBaseUrl = $defines['CIVICRM_UF_BASEURL'];
-  $model->templateCompilePath = $defines['CIVICRM_TEMPLATE_COMPILEDIR'];
+  $model->cmsBaseUrl = $host;
+  $model->templateCompilePath = \Civi::paths()->getPath('[civicrm.private]/templates_c');
 }
 
 // Setup CiviCRM settings if not set
-if (!$importSettings) {
+if ($regen_keys) {
   // Generate all the relevant variables
   $toAlphanum = function($bits) {
     return preg_replace(';[^a-zA-Z0-9];', '', base64_encode($bits));

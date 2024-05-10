@@ -188,7 +188,7 @@ function _provision_civicrm_get_package_info() {
 /**
  * CiviCRM verify operations (used by both verify and deploy)
  */
-function _provision_civicrm_regenerate_settings() {
+function _provision_civicrm_regenerate_settings($url = NULL) {
   drush_log(dt("CiviCRM: starting provision_civicrm_regenerate_settings()."));
 
   // Make sure to write the civicrm options
@@ -209,7 +209,7 @@ function _provision_civicrm_regenerate_settings() {
 
   // @todo FIXME pass the civicrm_sitekey if set in the frontend
   provision_file()->chmod(d()->site_path, 0755);
-  _provision_civicrm_run_cv_command('php:script ' . dirname(__DIR__) . '/cv/regenerate-settings.php');
+  _provision_civicrm_run_cv_command('php:script ' . dirname(__DIR__) . '/cv/regenerate-settings.php ' . escapeshellarg($url));
   provision_file()->chmod(d()->site_path, 0555);
 
   drush_log(dt("CiviCRM: Generated config civicrm.settings.php file"), 'ok');
