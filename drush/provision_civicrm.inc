@@ -112,12 +112,13 @@ function _provision_civicrm_get_package_path($load_if_missing = FALSE) {
 
   if (function_exists('provision_get_drupal_core_version')) {
     $v = provision_get_drupal_core_version();
+
     if ($v) {
       $drupal_core_version = $v;
     }
   }
 
-  if (drush_drupal_major_version() >= 8 || version_compare($drupal_core_version, 10, '>=')) {
+  if (drush_drupal_major_version() >= 8 || version_compare($drupal_core_version, 9, '>=')) {
     $root = d()->root;
     // If Drupal lives under a 'web' subdirectory (which is usually the case with composer),
     // we remove the prefix, since the vendor directory is outside 'web'.
@@ -294,10 +295,9 @@ function _provision_civicrm_codebase_version() {
   }
 
   if ($crmPath) {
-    require_once $vendorPath . '/autoload.php';
-    require_once $crmPath . '/CRM/Utils/System.php';
-    require_once $crmPath . '/CRM/Core/Exception.php';
-    $codeVer = CRM_Utils_System::version();
+    $xmlPath = $crmPath . '/xml/version.xml';
+    drush_log(dt('CiviCRM: version xmlPath !path', ['!path' => $xmlPath]), 'ok');
+    $codeVer = system('grep version_no ' . escapeshellarg($xmlPath) . ' | sed "s/.*>\(.*\)<.*/\1/"');
   }
 
   drush_log(dt('CiviCRM: code version is !ver', ['!ver' => $codeVer]), 'ok');
