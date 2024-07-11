@@ -39,6 +39,10 @@ $_SERVER['HTTPS'] = 'on';
   'srcPath' => $corePath,
 ]);
 
+if (empty($_SERVER['db_user']) || empty($_SERVER['db_passwd'])) {
+  throw new Exception("Missing database credentials such as db_user or db_passwd.");
+}
+
 // init() made the initial guess. Now we can overwrite with user-supplied data.
 $setup = \Civi\Setup::instance();
 $model = $setup->getModel();
