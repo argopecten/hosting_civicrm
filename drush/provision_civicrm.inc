@@ -219,7 +219,9 @@ function _provision_civicrm_regenerate_settings($url = NULL) {
     }
 
     provision_file()->chmod(d()->site_path, 0755);
+    provision_file()->chmod($filename, 0640);
     file_put_contents($filename, $settings);
+    provision_file()->chmod($filename, 0440);
     provision_file()->chmod(d()->site_path, 0555);
   }
   else {
@@ -244,7 +246,7 @@ function _provision_civicrm_regenerate_settings($url = NULL) {
 
   // @todo FIXME pass the civicrm_sitekey if set in the frontend
   provision_file()->chmod(d()->site_path, 0755);
-  _provision_civicrm_run_cv_command('php:script ' . dirname(__DIR__) . '/cv/regenerate-settings.php ' . escapeshellarg($url));
+  _provision_civicrm_run_cv_command('php:script ' . dirname(__DIR__) . '/cv/regenerate-settings.php --hostname=' . escapeshellarg($url));
   provision_file()->chmod(d()->site_path, 0555);
 
   drush_log(dt("CiviCRM: Generated config civicrm.settings.php file"), 'ok');

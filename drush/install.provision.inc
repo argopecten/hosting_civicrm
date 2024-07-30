@@ -63,7 +63,7 @@ function _provision_civicrm_install_civicrm($dbuser, $dbpass, $dbhost, $dbname, 
   $command = 'cv core:install --cms-base-url=' . $baseUrl . ' --lang=' . escapeshellarg($lang) . ' && drush pm-enable civicrm -y';
 
   if (version_compare($drupal_core_version, 10, '>=')) {
-    $command = 'drush pm:install civicrm -y';
+    $command = "drush pm:install civicrm -y --uri=$baseUrl";
   }
 
   drush_log(dt("CiviCRM: running: %command", ['%command' => $command]), 'ok');
