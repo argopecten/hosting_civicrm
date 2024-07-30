@@ -111,14 +111,12 @@ function _provision_civicrm_get_package_path($load_if_missing = FALSE) {
   $drupal_core_version = drush_drupal_major_version();
 
   if (function_exists('provision_get_drupal_core_version')) {
-    $v = provision_get_drupal_core_version();
-
-    if ($v) {
+    if ($v = provision_get_drupal_core_version()) {
       $drupal_core_version = $v;
     }
   }
 
-  if (drush_drupal_major_version() >= 8 || version_compare($drupal_core_version, 9, '>=')) {
+  if (version_compare($drupal_core_version, 8, '>=')) {
     $root = d()->root;
     // If Drupal lives under a 'web' subdirectory (which is usually the case with composer),
     // we remove the prefix, since the vendor directory is outside 'web'.
@@ -283,16 +281,6 @@ function _provision_civicrm_codebase_version() {
   }
 
   $crmPath = _provision_civicrm_get_package_path();
-  $vendorPath = $crmPath . '/vendor/';
-
-  if (drush_drupal_major_version() >= 8) {
-    $root = d()->root;
-    // If Drupal lives under a 'web' subdirectory (which is usually the case with composer),
-    // we remove the prefix, since the vendor directory is outside 'web'.
-    // Duplicates code from _provision_civicrm_get_package_path().
-    $root = preg_replace('#web/?$#', '', $root);
-    $vendorPath = $root . '/vendor/';
-  }
 
   if ($crmPath) {
     $xmlPath = $crmPath . '/xml/version.xml';
