@@ -25,6 +25,8 @@
   },
   "require": {
       "drupal/hosting": "^3.193",
+      "drupal/fix_ownership": "^3.191",
+      "drupal/fix_permissions": "^3.191",
       "symfony/process": "^3.1"
   }
 }
