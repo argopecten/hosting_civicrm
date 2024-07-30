@@ -35,9 +35,8 @@ function drush_provision_civicrm_provision_deploy() {
   // This needs to be done before we initialize CiviCRM,
   // otherwise we will load with an old include path (civicrm_root).
   // By passing a new baseUrl, it will generate a new site-key and secrets
-  $protocol = (d()->ssl_enabled || d()->https_enabled) ? 'https' : 'http';
-  $baseUrl = $protocol . '://' . d()->uri;
-  _provision_civicrm_regenerate_settings($baseUrl);
+  $hostName = d()->uri;
+  _provision_civicrm_regenerate_settings($hostName);
 }
 
 /**
