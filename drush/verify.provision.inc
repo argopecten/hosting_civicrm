@@ -44,7 +44,8 @@ function drush_provision_civicrm_provision_verify($url = NULL) {
 
   // This needs to be done before we initialize CiviCRM,
   // otherwise we will load with an old include path (civicrm_root).
-  _provision_civicrm_regenerate_settings();
+  $hostName = d()->uri;
+  _provision_civicrm_regenerate_settings($hostName);
 
   // Enabling the upgrade mode (if necessary) will avoid pesky issues
   // during the Drupal upgrade.
@@ -88,7 +89,9 @@ function drush_provision_civicrm_post_provision_verify($url = NULL) {
   // in which case, no point continuing with the upgrade and cache clear.
   if (provision_civicrm_verify_common()) {
     // Run the CiviCRM database upgrade procedure
-    _provision_civicrm_run_cv_command('upgrade:db');
+
+    $hostName = d()->uri;
+    _provision_civicrm_run_cv_command("upgrade:db --hostname=$hostName");
 
     // Only flush the cache if we are not upgrading. The upgrader already does a flush, and could
     // lead to odd errors such as: 'The dispatch policy prohibits event "hook_civicrm_permission"'
@@ -100,7 +103,7 @@ function drush_provision_civicrm_post_provision_verify($url = NULL) {
       }
 
       // Run as a shell command, instead of PHP, so that fatal errors do not crash the verify task
-      _provision_civicrm_run_cv_command('flush');
+      _provision_civicrm_run_cv_command("flush --hostname=$hostName");
     }
   }
 }
