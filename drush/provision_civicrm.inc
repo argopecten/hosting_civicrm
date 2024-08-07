@@ -197,11 +197,25 @@ function _provision_civicrm_regenerate_settings($url = NULL) {
   $filename = d()->site_path . '/civicrm.settings.php';
   $settings = file_get_contents($filename);
 
+  // Relax permissions while we update the file
+  provision_file()->chmod(d()->site_path, 0755)
+    ->succeed($name . ' permissions of @path have been changed to @perm.')
+    ->fail('Could not change permissions <code>@path</code> to @perm');
+  provision_file()->chmod($filename, 0640)
+    ->succeed($name . ' permissions of @path have been changed to @perm.')
+    ->fail('Could not change permissions <code>@path</code> to @perm');
+
   if ($settings) {
     $replacements = [];
     $replacements[] = [
       'search_regex' => '/^.*?\$civicrm_root =.*\n?/m',
       'replace_line' => "\$civicrm_root = '$civicrm_root';\n",
+    ];
+    // This is not great because we assume [civicrm.private] points here
+    // but .. it should?
+    $replacements[] = [
+      'search_regex' => "#'CIVICRM_TEMPLATE_COMPILEDIR', '/var/aegir/platforms/[^/]+/(web/)?sites/[^/]+/(private/)?files/civicrm/templates_c'#",
+      'replace_line' => "'CIVICRM_TEMPLATE_COMPILEDIR', '" . d()->site_path . "/private/files/civicrm/templates_c'",
     ];
 
     foreach ($replacements as $desc => $line) {
@@ -218,9 +232,7 @@ function _provision_civicrm_regenerate_settings($url = NULL) {
       }
     }
 
-    provision_file()->chmod(d()->site_path, 0755);
     file_put_contents($filename, $settings);
-    provision_file()->chmod(d()->site_path, 0555);
   }
   else {
     drush_log(dt("drush_provision_civicrm_provision_deploy: Failed to read the civicrm.settings.php file (%file). The civicrm_root value will not be updated, and cloning from one platform to another will fail.", ['%file' => $filename]), 'error');
@@ -243,9 +255,15 @@ function _provision_civicrm_regenerate_settings($url = NULL) {
   }
 
   // @todo FIXME pass the civicrm_sitekey if set in the frontend
-  provision_file()->chmod(d()->site_path, 0755);
   _provision_civicrm_run_cv_command('php:script ' . dirname(__DIR__) . '/cv/regenerate-settings.php ' . escapeshellarg($url));
-  provision_file()->chmod(d()->site_path, 0555);
+
+  // Set permissions back to strict
+  provision_file()->chmod($filename, 0440)
+    ->succeed($name . ' permissions of @path have been changed to @perm.')
+    ->fail('Could not change permissions <code>@path</code> to @perm');
+  provision_file()->chmod(d()->site_path, 0555)
+    ->succeed($name . ' permissions of @path have been changed to @perm.')
+    ->fail('Could not change permissions <code>@path</code> to @perm');
 
   drush_log(dt("CiviCRM: Generated config civicrm.settings.php file"), 'ok');
   drush_log(dt("CiviCRM: leaving provision_civicrm_regenerate_settings()."));
