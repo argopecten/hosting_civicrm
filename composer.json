@@ -1,13 +1,41 @@
 {
-  "require-dev": {
-    "drush/drush": "^8.0"
-  },
-  "autoload-dev": {
-    "psr-0": {
-      "HostingCiviTest": "tests/"
-    }
-  },
-  "require": {
-    "symfony/process": "^3.1"
-  }
+    "name": "drupal/hosting_civicrm",
+    "description": "This module provides tools to manage CiviCRM in the Aegir Hosting System.",
+    "type": "drupal-module",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name":      "Aegir maintainers",
+            "homepage":  "http://docs.aegirproject.org/en/3.x/community/core-team/"
+        }
+    ],
+    "support": {
+        "issues": "https://www.drupal.org/project/issues/hosting_deploy",
+        "docs": "http://docs.aegirproject.org/"
+    },
+    "repositories": {
+          "drush/drush": {
+              "type": "vcs",
+              "url":  "https://github.com/argopecten/aegir-drush8"
+          },
+          "drupal/hosting": {
+              "type": "vcs",
+              "url":  "https://github.com/argopecten/aegir-hosting"
+          },
+          "drupal": {
+                "type": "composer",
+                "url": "https://packages.drupal.org/7"
+          }
+    },
+    "autoload-dev": {
+      "psr-0": {
+        "HostingCiviTest": "tests/"
+      }
+    },
+    "require": {
+      "symfony/process": "^3.1",
+      "drupal/hosting": "^3.193"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
 }
