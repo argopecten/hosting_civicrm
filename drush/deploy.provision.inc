@@ -38,7 +38,8 @@ function drush_provision_civicrm_provision_deploy() {
   // c.f. #1907884 The Drupal cache clear in drupal's post_provision hook
   // causes CiviCRM 4.2 to call civicrm_initialize() before we have had the
   // time to regenerate the settings.
-  _provision_civicrm_regenerate_settings();
+  $url=d()->uri;
+  _provision_civicrm_regenerate_settings($url);
 }
 
 /**

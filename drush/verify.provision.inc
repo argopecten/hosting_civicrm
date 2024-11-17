@@ -33,7 +33,10 @@ function drush_provision_civicrm_provision_verify($url = NULL) {
     return;
   }
 
-  drush_log(dt("CiviCRM: Running drush_civicrm_provision_verify"));
+  if (is_null($url)) {
+    $url=d()->uri;
+  }
+  drush_log(dt("CiviCRM: Running drush_civicrm_provision_verify. URL=" . $url));
 
   // Precaution to avoid "duplicate entry" that sometimes happens
   // Set to NULL instead of delete, because sometimes the quick write/read might
@@ -44,7 +47,7 @@ function drush_provision_civicrm_provision_verify($url = NULL) {
 
   // This needs to be done before we initialize CiviCRM,
   // otherwise we will load with an old include path (civicrm_root).
-  _provision_civicrm_regenerate_settings();
+  _provision_civicrm_regenerate_settings($url);
 
   // Most importantly, get rid of the Config.IDS.ini
   _provision_civicrm_clear_config_cache();

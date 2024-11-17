@@ -419,8 +419,56 @@ function _provision_civicrm_get_package_info() {
 /**
  * CiviCRM verify operations (used by both verify and deploy)
  */
-function _provision_civicrm_regenerate_settings() {
+function _provision_civicrm_regenerate_settings($url = NULL) {
   drush_log(dt("CiviCRM: starting provision_civicrm_regenerate_settings()."));
+
+  // We have to manually update the $civicrm_root in the civicrm.settings.php
+  // file, because using cv assumes a functionnal CiviCRM, which will not work
+  // if we are cloning from a platform to another (duplicate ClassLoader).
+  $civicrm_root = _provision_civicrm_get_package_path();
+  $filename = d()->site_path . '/civicrm.settings.php';
+  $settings = file_get_contents($filename);
+
+  // Relax permissions while we update the file
+  provision_file()->chmod(d()->site_path, 0755)
+    ->succeed(d()->name . ' permissions of @path have been changed to @perm.')
+    ->fail('Could not change permissions <code>@path</code> to @perm');
+  provision_file()->chmod($filename, 0640)
+    ->succeed(d()->name . ' permissions of @path have been changed to @perm.')
+    ->fail('Could not change permissions <code>@path</code> to @perm');
+
+  if ($settings) {
+    $replacements = [];
+    $replacements[] = [
+      'search_regex' => '/^.*?\$civicrm_root =.*\n?/m',
+      'replace_line' => "\$civicrm_root = '$civicrm_root';\n",
+    ];
+    // This is not great because we assume [civicrm.private] points here
+    // but .. it should?
+    $replacements[] = [
+      'search_regex' => "#'CIVICRM_TEMPLATE_COMPILEDIR', '/var/aegir/platforms/[^/]+/(web/)?sites/[^/]+/(private/)?files/civicrm/templates_c'#",
+      'replace_line' => "'CIVICRM_TEMPLATE_COMPILEDIR', '" . d()->site_path . "/private/files/civicrm/templates_c'",
+    ];
+
+    foreach ($replacements as $desc => $line) {
+      // Throw a warning if any of our replacements cannot be found.
+      if (!preg_match($line['search_regex'], $settings)) {
+        drush_log('drush_provision_civicrm_provision_deploy: Failed to replace: '. $line['search_regex'], 'warning');
+      }
+      else {
+        $count = 0;
+        $settings = preg_replace($line['search_regex'], $line['replace_line'], $settings, -1, $count);
+        if ($count > 0) {
+          drush_log('drush_provision_civicrm_provision_deploy: Succeeded to replace: ' . $line['search_regex'], 'success');
+        }
+      }
+    }
+
+    file_put_contents($filename, $settings);
+  }
+  else {
+    drush_log(dt("drush_provision_civicrm_provision_deploy: Failed to read the civicrm.settings.php file (%file). The civicrm_root value will not be updated, and cloning from one platform to another will fail.", ['%file' => $filename]), 'error');
+  }
 
   // Make sure to write the civicrm options
   $civi_opts = _provision_civicrm_drush_options('post verify');
@@ -438,26 +486,17 @@ function _provision_civicrm_regenerate_settings() {
     drush_log('CiviCRM: no site key found from the front-end.');
   }
 
-  $db_user = drush_get_option('db_user', NULL, 'site');
-  $db_passwd = drush_get_option('db_passwd', NULL, 'site');
-  $db_host = drush_get_option('db_host', NULL, 'site');
-  $db_name = drush_get_option('db_name', NULL, 'site');
+  // @todo FIXME pass the civicrm_sitekey if set in the frontend
+  _provision_civicrm_run_cv_command('php:script ' . dirname(__DIR__) . '/cv/regenerate-settings.php --hostname=' . escapeshellarg($url));
 
-  // include civicrm installer helper file (otherwise PEAR DB.php will fail to include parts)
-  // FIXME : we should test whether this is still necessary.
-  $webRoot = _provision_civicrm_find_platform_web_root(d()->root);
-  $crmPath = _provision_civicrm_get_package_path();
+  // Set permissions back to strict
+  provision_file()->chmod($filename, 0440)
+    ->succeed(d()->name . ' permissions of @path have been changed to @perm.')
+    ->fail('Could not change permissions <code>@path</code> to @perm');
+  provision_file()->chmod(d()->site_path, 0755)
+    ->succeed(d()->name . ' permissions of @path have been changed to @perm.')
+    ->fail('Could not change permissions <code>@path</code> to @perm');
 
-  $civicrmInstallerHelper = $crmPath . "/install/civicrm.php";
-
-  if (! file_exists($civicrmInstallerHelper) ) {
-    drush_log(dt("CiviCRM installer helper file is missing. Not running provision_civicrm_regenerate_settings()."), 'error');
-    return;
-  }
-
-  require_once "$civicrmInstallerHelper";
-
-  provision_civicrm_regenerate_settings_file($db_user, $db_passwd, $db_host, $db_name, $crmPath);
   drush_log(dt("CiviCRM: Generated config civicrm.settings.php file"), 'ok');
   drush_log(dt("CiviCRM: leaving provision_civicrm_regenerate_settings()."));
 }
@@ -818,4 +857,30 @@ function _provision_civicrm_run_drush_command($command) {
   }
 
   return $json;
+}
+
+/**
+ * Run a command by invoking a shell instead of running it in the
+ * same process as Aegir, because it makes error handling more difficult.
+ *
+ * You must call escapeshellarg() before calling this function, if there are any args in the $command.
+ *
+ * Errors are logged as warnings to avoid an Aegir rollback (because those errors
+ * should not happen, and if they do, we want to be able to debug).
+ */
+function _provision_civicrm_run_cv_command($command) {
+  // Always non-interactive (cv -n)
+  $command = 'cd ' . escapeshellarg(d()->site_path) . ' && cv -n ' . $command;
+  drush_log(dt("CiviCRM: running: %command", ['%command' => $command]), 'ok');
+  $json = system($command, $retval);
+  // Output is always json
+  $output = json_decode($json, TRUE);
+  if ($retval || (is_array($output) && !empty($output['is_error']))) {
+    drush_log(dt("CiviCRM: command failed {$retval} (the ConfigAndLog should have more details): %output", ['%output' => $json]), 'warning');
+  }
+  else {
+    drush_log(dt("CiviCRM: command success: %output", ['%output' => $json]), 'ok');
+  }
+
+  return $output;
 }
